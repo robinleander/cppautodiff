@@ -147,13 +147,14 @@ struct derive<F, 0> {
 };
 
 typedef Pow<Ln<Input<f32>>, Div<PI, Input<f32>>> fn;
+typedef derive<fn, 0>::value fnd;
 
 f32 f(f32 x) {
-  return derive<fn, 0>::value::eval(x);
+  return fnd::eval(x);
 }
 
 f32 af(f32 x) {
-  return Taylor<fn, 2>::eval(2.0f, x);
+  return Taylor<fnd, 4>::eval(2.0f, x);
 }
 
 constexpr float stepsize = 0.0000001;
@@ -164,7 +165,7 @@ using namespace std;
 static void BM_approx(benchmark::State& state) {
   float x = start;
   for (auto _ : state) {
-    af(x);
+    benchmark::DoNotOptimize(af(x));
     x+=stepsize;
   }
 }
@@ -172,7 +173,7 @@ static void BM_approx(benchmark::State& state) {
 static void BM_real(benchmark::State& state) {
   float x = start;
   for (auto _ : state) {
-    f(x);
+      benchmark::DoNotOptimize(f(x));
     x += stepsize;
   }
 }
