@@ -1,9 +1,8 @@
-FROM alpine:edge
+FROM base/archlinux
 
 
 WORKDIR /app
-RUN apk update
-RUN apk add git cmake g++ make clang
+RUN pacman -Suy --noconfirm git cmake make clang
 RUN git clone https://github.com/google/benchmark.git
 RUN mkdir build
 WORKDIR /app/build

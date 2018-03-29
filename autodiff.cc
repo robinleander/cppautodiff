@@ -115,6 +115,28 @@ struct Pow {
 
 CONST_VAL(PI, 3.14159265);
 
+// b: basis
+// e: Exponent
+// Annahmen: Typ T besitzt  T operator*(T, T)  und eine 1.
+template<typename T, typename I>
+typename std::enable_if<std::is_unsigned<I>::value, T>::type
+powi(T b, I e)
+{
+  if (e <= 0) return T(1);
+  I h = ~(~0u >> 1);
+  while (!(e & h)) h >>= 1;
+  // h maskiert nun das erste gesetzte Bit in e. (#)
+  T r = b;
+
+  // solange weitere Bits zu prüfen sind (das erste wurde durch r = b bereits abgearbeitet),
+  while (h >>= 1)
+    {
+      r *= r; // quadrieren
+      if (e & h) r *= b; // falls Bit gesetzt, multiplizieren
+    }
+  // h == 0, d. h. alle Bits geprüft.
+  return r;
+}
 /**
  * Taylor Series:
  * \sum_{n=0}^{\infty} \frac{f^(n)(a)}{n!} (x-a)^n
@@ -122,16 +144,16 @@ CONST_VAL(PI, 3.14159265);
 template<typename F, std::size_t N, std::size_t n=0>
 struct Taylor {
   template<typename T>
-  static constexpr
+  static constexpr inline
   typename std::enable_if<n != N, T>::type
-  eval(T a, T x) {
-    T term = F::eval(a)/factorial(n) * pow(x-a, n);
+  eval(T a, T x) __attribute__((always_inline)) {
+    T term = F::eval(a)/factorial(n) * powi(x-a, n);
     return term + Taylor<typename F::grad, N, n+1>::eval(a, x);
   }
   template<typename T>
-  static constexpr
+  static constexpr inline
   typename std::enable_if<n == N, T>::type
-  eval(T a, T x) {
+  eval(T a, T x) __attribute__((always_inline)) {
     return 0;
   }
 };
@@ -149,47 +171,46 @@ struct derive<F, 0> {
 typedef Pow<Ln<Input<f32>>, Div<PI, Input<f32>>> fn;
 typedef derive<fn, 0>::value fnd;
 
-f32 f(f32 x) {
+extern f32 f(f32 x) {
   return fnd::eval(x);
 }
 
-f32 af(f32 x) {
-  return Taylor<fnd, 4>::eval(2.0f, x);
+extern f32 af(f32 x) {
+  return Taylor<fnd, 5>::eval(2.0f, x);
 }
 
-constexpr float stepsize = 0.0000001;
-constexpr float start = 1.25;
+constexpr int maxrange = 10000;
+constexpr float fromstate(benchmark::State &state) {
+    return state.range(0)/static_cast<float>(maxrange)+1.25f;
+}
 
 #include <iostream>
 using namespace std;
 static void BM_approx(benchmark::State& state) {
-  float x = start;
+  volatile float x;
   for (auto _ : state) {
-    benchmark::DoNotOptimize(af(x));
-    x+=stepsize;
+    benchmark::DoNotOptimize(x = af(fromstate(state)));
   }
 }
 
 static void BM_real(benchmark::State& state) {
-  float x = start;
+  volatile float x;
   for (auto _ : state) {
-      benchmark::DoNotOptimize(f(x));
-    x += stepsize;
+    benchmark::DoNotOptimize(x = f(fromstate(state)));
   }
 }
 
-BENCHMARK(BM_approx);
-BENCHMARK(BM_real);
+BENCHMARK(BM_approx)->Range(0, maxrange);
+BENCHMARK(BM_real)->Range(0, maxrange);
 
-BENCHMARK_MAIN();
+//BENCHMARK_MAIN();
 
-int notmain() {
-  for (float x = 1.25; x <= 3; x+=0.25) {
-    std::cout << x << std::endl;
+int main() {
+  std::cout << "x,f(x),af(x)" << std::endl;
+  for (float x = 1.25; x <= 3; x+=0.0001) {
+    std::cout << x << ",";
+    std::cout << f(x) << ",";
     std::cout << af(x) << std::endl;
-    std::cout << f(x) << std::endl;
-    std::cout << abs(af(x)-f(x)) << std::endl;
-    std::cout << std::endl;
   }
   return 0;
 }
