@@ -15,12 +15,15 @@ docker build -t approx . && docker run -it approx
 // pow(ln(x), pi/x)
 typedef Pow<Ln<Input<float>>, Div<PI, Input<float>>> fn;
 
-// Get the derivative:
+// Get the first derivative:
 typedef fn::grad fngrad;
 
-// Evaluate at a point
+// Get the second derivative:
+typedef fn::grad::grad fngradgrad;
+
+// Evaluate some function at a point
 float f(float x) {
-    fn::grad::eval(x);
+    return fn::grad::eval(x);
 }
 ```
 
