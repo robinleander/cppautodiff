@@ -12,8 +12,4 @@ RUN make -j4
 RUN make install
 
 WORKDIR /app
-ADD autodiff.cc CMakeLists.txt ./
-RUN cmake . -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
-RUN make -j4
-
-CMD /app/autodiff
+VOLUME /app
